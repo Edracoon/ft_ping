@@ -26,7 +26,8 @@ typedef enum bool {
 	true
 } bool;
 
-/* ping packet structure */
+/* ping packet structure */ 
+/* (not working on macos but debian is fine) */
 struct ping_pkt
 {
 	struct icmphdr	hdr;
