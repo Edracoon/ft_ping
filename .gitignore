@@ -1,0 +1,16 @@
+
+# --- Authorized functions ---
+	- gettimeofday
+	- exit
+	- inet_ntop / inet_pton
+	- signal / alarm
+	- socket / setsockopt
+	- sendto / recvfrom
+	- getpid / getuid
+	- getaddrinfo / freeaddrinfo
+	- strerror / gai_strerror
+	- printf (all its family)
+
+# Ping (Packet Internet Groper)
+-> is a method for determining communication latency between two networks.
+-> Ping is a method of determining latency or the amount of time it takes for data to travel between two devices or across a network.
