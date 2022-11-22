@@ -4,17 +4,14 @@ SRCS= ${wildcard *.c}
 
 OBJS= ${SRCS:.c=.o}
 
-CC=gcc
+CC= gcc
 
-CFLAGS=-Wall -Wextra -Werror
+CFLAGS= -Wall -Wextra -Werror
 
-RM=rm -f
-
-.c.o:
-	${CC} ${CFLAGS} -c $< -o ${<:.c=.o}
+RM= rm -f
 
 ${NAME}: ${OBJS}
-	${CC} ${CFLAGS} -o ${NAME} ${OBJS}
+	${CC} ${CFLAGS} -o ${NAME} ${OBJS} -lm
 
 all: ${NAME}
 

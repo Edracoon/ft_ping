@@ -35,6 +35,7 @@ void	parseOption(ull ac, char **av) {
 	g_ping.debug = false;
 	g_ping.broadcast = false;
 	g_ping.ttl = 64; // Avoid infinite loop if destination can't be found
+	g_ping.interval = 1; // 1 second by default of interval
 
 	for (ull i = 1 ; i < ac ; i++)
 	{
