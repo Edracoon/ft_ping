@@ -42,11 +42,26 @@ void	compute_rtt()
 	}
 	mdev = mdev / count;
 
+	free_list_time();
+
 	/* Store the stats */
 	g_ping.rtt_min = min;
 	g_ping.rtt_max = max;
 	g_ping.rtt_avg = avg;
 	g_ping.rtt_mdev = mdev;
+}
+
+void	free_list_time()
+{
+	Times	*tmp = g_ping.times;
+	Times	*next;
+
+	while (tmp)
+	{
+		next = tmp->next;
+		free(tmp);
+		tmp = next;
+	}
 }
 
 void	add_back_time(double new_elapsed_time)
