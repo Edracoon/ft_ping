@@ -1,5 +1,10 @@
 #include "ft_ping.h"
 
+double	absolute(double n)
+{
+	return (n < 0 ? -n : n);
+}
+
 /* Calculate and Print Stats */
 void	compute_rtt()
 {
@@ -23,14 +28,19 @@ void	compute_rtt()
 		/* avg */
 		avg += tmp->elapsed_ms;
 
-		/* mdev */
-		mdev += pow(tmp->elapsed_ms - avg, 2);
-
 		count++;
 		tmp = tmp->next;
 	}
-	avg /= count;
-	mdev = sqrt(mdev / count);
+	avg = avg / count;
+
+	/* mdev */
+	tmp = g_ping.times;
+	while (tmp)
+	{
+		mdev += absolute(tmp->elapsed_ms - avg);
+		tmp = tmp->next;
+	}
+	mdev = mdev / count;
 
 	/* Store the stats */
 	g_ping.rtt_min = min;

@@ -7,7 +7,6 @@
 #include <time.h>
 #include <signal.h>
 #include <errno.h>
-#include <math.h>
 
 /* Ping relatives imports */
 #include <netinet/ip.h>

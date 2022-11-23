@@ -46,7 +46,7 @@ struct sockaddr_in	resolve_address_dns(const char *hostname)
 	target_addr.sin_family = host->ai_family;
 	target_addr.sin_addr = ((struct sockaddr_in *)host->ai_addr)->sin_addr;
 
-	if (target_addr.sin_addr.s_addr == INADDR_BROADCAST && g_ping.debug == false) {
+	if (target_addr.sin_addr.s_addr == INADDR_BROADCAST && g_ping.broadcast == false) {
 		fprintf(stderr, "ft_ping: Error: Broadcast address not allowed. Use -b option to enable broadcast.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -71,26 +71,40 @@ int	setup_socket(void)
         return 0;
     }
 
-	/* set socket options at ip to TTL (TLL is number of router socket can pass trought~)*/
-    if (setsockopt(sock, SOL_IP, IP_TTL, &g_ping.ttl, sizeof(g_ping.ttl)) == -1) {
-        printf("ft_ping: Error: Setting socket options to TTL failed: %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    /* setting timeout of recv */
 	struct timeval recv_timeout;
 	recv_timeout.tv_sec = 1; // 1 second by default of interval
 	recv_timeout.tv_usec = 0;
+
+	/* set socket options at ip to TTL send (TLL is number of router socket can pass trought~) */
+	if (setsockopt(sock, SOL_IP, IP_TTL, &g_ping.ttl, sizeof(g_ping.ttl)) == -1) {
+		printf("ft_ping: Error: Setting socket options to TTL send failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	/* set socket options at ip to TTL recev */
+	if (setsockopt(sock, SOL_IP, IP_RECVTTL, &g_ping.ttl, sizeof(g_ping.ttl)) == -1) {
+		printf("ft_ping: Error: Setting socket options to TTL recev failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	/* setting timeout of recv */
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout)) == -1) {
 		fprintf(stderr, "ft_ping: Error: Setting socket options timeout failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
+	int	activated = g_ping.broadcast ? 1 : 0;
+	/* setting to enable broadcast */
+	if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &activated, sizeof(activated)) == -1) {
+		fprintf(stderr, "ft_ping: Error: Setting socket options timeout failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
 	/* Setting socket option with SO_DEBUG if -d is enabled */
-	// if (g_ping.debug && setsockopt(sock, SOL_SOCKET, SO_DEBUG, NULL, 0) == -1) {
-	// 	fprintf(stderr, "ft_ping: Error: SO_DEBUG setting failed: %s\n", strerror(errno));
-	// 	exit(EXIT_FAILURE);
-	// }
+	if (g_ping.debug && setsockopt(sock, SOL_SOCKET, SO_DEBUG, NULL, 0) != -1) {
+		fprintf(stderr, "ft_ping: Error: SO_DEBUG setting failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	return sock;
 }
 
@@ -146,9 +160,18 @@ void	ping(struct sockaddr_in target_addr)
 	/* Check if packet is an echo_reply ( 69 in RFC and manual ;) ), also check that we have sent the packet */
 	if (packet.hdr.type == 69 && sent)
 	{
-		/* Print packet infos as the real ping */
-		printf("%ld bytes from %s (%s): icmp_seq=%d ttl=%d time=%.1f ms\n", sizeof(packet), g_ping.hostname, g_ping.ip_addr, g_ping.recv_count, g_ping.ttl, elapsed_ms);
-		g_ping.recv_count++;
+		// Check if the response is from our target (Also checks if is TTL Exceeded)
+		if (recev_addr.sin_addr.s_addr == target_addr.sin_addr.s_addr && target_addr.sin_addr.s_addr != INADDR_BROADCAST)
+		{
+			/* Print packet infos as the real ping */
+			if (target_addr.sin_addr.s_addr != INADDR_BROADCAST && !g_ping.quiet) {
+				printf("%ld bytes from %s (%s): icmp_seq=%d ttl=%d time=%.1f ms\n",
+					sizeof(packet), g_ping.hostname, g_ping.ip_addr, g_ping.send_count, g_ping.ttl, elapsed_ms);
+			}
+			g_ping.recv_count++;
+		}
+		else if (!g_ping.quiet && target_addr.sin_addr.s_addr != INADDR_BROADCAST) // If the response is not from our target, it's a TTL Exceeded
+			printf("From %s (%s) icmp_seq=%d Time to live exceeded\n", inet_ntoa(recev_addr.sin_addr), inet_ntoa(recev_addr.sin_addr), g_ping.send_count);
 	}
 	else if (g_ping.verbose && sent)
 		fprintf(stderr, "ft_ping: Error: Packet received is not an ECHO_REPLY\n");
@@ -175,15 +198,18 @@ void	quit_handler(int sig)
 	elapsed_total_time += (g_ping.end_time.tv_usec - g_ping.start_time.tv_usec) / 1000.0;	/* micro to ms */
 
 	/* Print stats */
-	printf("--- %s ping statistics ---\n", g_ping.hostname);
+	printf("\n--- %s ping statistics ---\n", g_ping.hostname);
 	printf("%d packets transmitted, %d received, %.2f%% packet loss, time %llums\n",
 			g_ping.send_count, g_ping.recv_count, (double)(g_ping.send_count - g_ping.recv_count) / g_ping.send_count * 100, elapsed_total_time);
 
-	/* Compute RTT */
-	compute_rtt();
-
 	/* Print RTT stats */
-	printf("rtt min/avg/max/mdev = %.3f/%.3f/%.3f/%.3f ms\n", g_ping.rtt_min, g_ping.rtt_avg, g_ping.rtt_max, g_ping.rtt_mdev);
+	if (g_ping.recv_count != 0)
+	{
+		compute_rtt();
+		printf("rtt min/avg/max/mdev = %.3f/%.3f/%.3f/%.3f ms\n", g_ping.rtt_min, g_ping.rtt_avg, g_ping.rtt_max, g_ping.rtt_mdev);
+	}
+	else
+		printf("\n");
 	exit(EXIT_SUCCESS);
 }
 
@@ -206,6 +232,8 @@ int	main(int ac, char **av)
 	gettimeofday(&g_ping.start_time, NULL);
 
 	/* Create an infinite loop using alarm and signal */
+	if (g_ping.broadcast)
+		printf("WARNING: pinging broadcast address\n");
 	printf("PING %s (%s) 64 bytes of data.\n", g_ping.hostname, g_ping.ip_addr);
 	ping(g_ping.target_addr);
 	alarm(g_ping.interval);
