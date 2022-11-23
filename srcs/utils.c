@@ -1,5 +1,7 @@
 #include "ft_ping.h"
 
+void	free_list_time();
+
 double	absolute(double n)
 {
 	return (n < 0 ? -n : n);
