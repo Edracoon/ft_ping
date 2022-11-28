@@ -15,14 +15,15 @@ void	usage(const char * potentialError)
 	and waits for an ICMP ECHO_RESPONSE from the <destination>.\n \
 	The ping command is used to verify the connectivity at IP level.\n \
 	It ensure that the data packet sent has reached its destination point without any loss.\n\n \
-Usage: \n\t ./ft_ping <destination> [-h] [-v] [-d] [-q] [-b] [-t <ttl>]\n\n \
+Usage: \n\t ./ft_ping <destination> [-h] [-v] [-d] [-q] [-b] [-t <ttl>] [-4]\n\n \
 Option:\n \
 	-h\t\t( Show this help )\n \
 	-v\t\t( Enable verbose mode )\n \
 	-d\t\t( Enable debug mode using SO_DEBUG )\n \
 	-q\t\t( Enable quiet mode )\n \
 	-b\t\t( Enable broadcast, ex.: 255.255.255.255 )\n \
-	-t <ttl>\t( Maximum number of IP routers that the packet can go through )\n");
+	-t <ttl>\t( Time To Live = Maximum number of IP routers that the packet can go through )\n \
+	-4 <ipv4>\t( IPv4 address )\n");
 	if (potentialError)
 		fprintf(stderr, "\e[0;31mft_ping: Error: %s\n\e[0m", potentialError);
 	exit(EXIT_FAILURE);
